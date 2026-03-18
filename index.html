@@ -10,7 +10,7 @@
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         /* Visor Flotante */
-        #visor-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; flex-direction: column; }
+        #visor-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; }
         #pdf-frame { width: 100%; height: 100%; border: none; background: white; }
     </style>
 </head>
@@ -35,9 +35,18 @@
     </div>
 
     <div id="visor-modal">
-        <div class="p-4 flex justify-between items-center bg-slate-900 text-white">
-            <span id="visor-nombre" class="text-xs font-bold truncate pr-4">Documento</span>
-            <button onclick="cerrarVisor()" class="bg-red-600 px-4 py-2 rounded-lg font-bold text-xs uppercase">Cerrar X</button>
+        <div class="p-4 flex justify-between items-center bg-slate-900 text-white gap-3">
+            <span id="visor-nombre" class="text-[10px] font-bold truncate flex-1 uppercase tracking-wider">Documento</span>
+            
+            <div class="flex gap-2">
+                <a id="btn-descargar" href="#" target="_blank" download class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg font-bold text-[10px] uppercase flex items-center gap-1 transition-colors">
+                    <span>Descargar</span>
+                </a>
+                
+                <button onclick="cerrarVisor()" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded-lg font-bold text-[10px] uppercase transition-colors">
+                    Cerrar X
+                </button>
+            </div>
         </div>
         <iframe id="pdf-frame" src=""></iframe>
     </div>
@@ -76,10 +85,12 @@
             document.getElementById('visor-nombre').innerText = nombre;
             document.getElementById('visor-modal').style.display = 'flex';
             const frame = document.getElementById('pdf-frame');
-            frame.src = ""; // Limpiar antes
+            const btnDescargar = document.getElementById('btn-descargar');
+            
+            frame.src = ""; // Limpiar visor
+            btnDescargar.href = "#"; // Limpiar link anterior
 
             try {
-                // Obtenemos link temporal directo (evita problemas de permisos de sharing)
                 const res = await fetch('https://api.dropboxapi.com/2/files/get_temporary_link', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${DROPBOX_TOKEN}`, 'Content-Type': 'application/json' },
@@ -88,8 +99,11 @@
                 const data = await res.json();
                 
                 if (data.link) {
-                    // Usamos un visor externo que sí permite enmarcar PDFs de Dropbox
+                    // Acción 1: El visor de pantalla (Google Docs)
                     frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(data.link)}&embedded=true`;
+                    
+                    // Acción 2: El botón de descarga directa
+                    btnDescargar.href = data.link;
                 }
             } catch (e) {
                 alert("No se pudo cargar la vista previa.");
@@ -100,6 +114,7 @@
         function cerrarVisor() {
             document.getElementById('visor-modal').style.display = 'none';
             document.getElementById('pdf-frame').src = "";
+            document.getElementById('btn-descargar').href = "#";
         }
 
         function renderizar(archivos) {
@@ -116,8 +131,8 @@
                             <div class="w-10 h-7 flex-shrink-0 bg-slate-100 rounded flex items-center justify-center border">
                                 ${cp ? `<img src="https://flagcdn.com/w80/${cp}.png" class="h-full object-cover">` : `<span class="text-[8px] font-bold text-slate-400 uppercase">PDF</span>`}
                             </div>
-                            <div class="ml-4">
-                                <h3 class="text-slate-800 font-bold text-xs uppercase truncate w-48">${archivo.name.replace('.pdf','').replace(/_/g,' ')}</h3>
+                            <div class="ml-4 flex-1">
+                                <h3 class="text-slate-800 font-bold text-xs uppercase truncate w-40 sm:w-64">${archivo.name.replace('.pdf','').replace(/_/g,' ')}</h3>
                                 <p class="text-blue-600 text-[9px] font-black uppercase mt-1">Ver en pantalla ❯</p>
                             </div>
                         </button>
