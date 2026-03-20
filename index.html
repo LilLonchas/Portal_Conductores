@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificados Privados</title>
+    <title>Portal de Certificados Oficiales</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .boton-archivo:active { transform: scale(0.96); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        /* Visor Flotante */
-        #visor-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; }
+        #visor-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 9999; flex-direction: column; }
         #pdf-frame { width: 100%; height: 100%; border: none; background: white; }
     </style>
 </head>
@@ -18,122 +17,275 @@
 
     <div id="login-screen" class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
         <div class="text-5xl mb-4">🔐</div>
-        <h2 class="text-2xl font-bold mb-2">Acceso Empresa</h2>
-        <input type="password" id="pass-input" class="w-full p-4 border-2 rounded-xl mb-4 text-center text-2xl outline-none focus:border-blue-500" placeholder="****" inputmode="numeric">
-        <button onclick="verificar()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg">ENTRAR</button>
-        <p id="error-msg" class="text-red-500 mt-4 text-xs font-bold hidden">CÓDIGO INCORRECTO</p>
+        <h2 class="text-2xl font-bold mb-2 text-slate-800">Acceso Privado</h2>
+        <p class="text-slate-500 text-sm mb-6">Introduce tu PIN o DNI</p>
+        <input type="text" id="pass-input" class="w-full p-4 border-2 rounded-xl mb-4 text-center text-xl outline-none focus:border-blue-500 font-mono uppercase" placeholder="Escribe aquí..." autocomplete="off">
+        <button onclick="verificar()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest">Entrar</button>
+        <p id="error-msg" class="text-red-500 mt-4 text-xs font-bold hidden uppercase">Código Incorrecto</p>
     </div>
 
-    <div id="app-screen" class="hidden w-full max-w-md min-h-screen bg-slate-50 self-start shadow-2xl flex flex-col">
-        <nav class="bg-blue-900 text-white p-6 sticky top-0 z-50">
-            <h1 class="text-lg font-bold text-center uppercase">Certificados Disponibles</h1>
+    <div id="app-screen" class="hidden w-full max-w-md min-h-screen bg-slate-50 self-start shadow-2xl flex flex-col font-sans">
+        <nav class="bg-blue-900 text-white p-6 sticky top-0 z-50 shadow-md text-center">
+            <h1 class="text-lg font-bold uppercase tracking-tight" id="saludo-usuario">Certificados</h1>
+            <p id="sub-titulo" class="text-[10px] text-blue-300 uppercase mt-1 tracking-widest">Documentación de Empresa</p>
         </nav>
+        
         <div class="p-5 flex-1">
-            <input type="text" id="buscador" onkeyup="filtrar()" placeholder="Escribe tu nombre..." class="w-full p-4 rounded-2xl border-none shadow-md outline-none mb-6">
+            <input type="text" id="buscador" onkeyup="filtrar()" placeholder="Buscar conductor o país..." class="w-full p-4 rounded-2xl border-none shadow-md outline-none mb-6 text-slate-600 focus:ring-2 focus:ring-blue-400">
             <div id="lista-archivos" class="space-y-3"></div>
         </div>
+
+        <button onclick="location.reload()" class="p-4 text-slate-400 text-[10px] font-bold uppercase hover:text-red-500 transition-colors">Cerrar Sesión</button>
     </div>
 
     <div id="visor-modal">
-        <div class="p-4 flex justify-between items-center bg-slate-900 text-white gap-3">
+        <div class="p-4 flex justify-between items-center bg-slate-900 text-white gap-3 border-b border-slate-800">
             <span id="visor-nombre" class="text-[10px] font-bold truncate flex-1 uppercase tracking-wider">Documento</span>
-            
             <div class="flex gap-2">
-                <a id="btn-descargar" href="#" target="_blank" download class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg font-bold text-[10px] uppercase flex items-center gap-1 transition-colors">
-                    <span>Descargar</span>
-                </a>
-                
-                <button onclick="cerrarVisor()" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded-lg font-bold text-[10px] uppercase transition-colors">
-                    Cerrar X
-                </button>
+                <a id="btn-descargar" href="#" target="_blank" download class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-colors">Descargar</a>
+                <button onclick="cerrarVisor()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-bold text-[10px] uppercase transition-colors">Cerrar X</button>
             </div>
         </div>
         <iframe id="pdf-frame" src=""></iframe>
     </div>
 
     <script>
-        const CLAVE_ACCESO = "1234"; 
-        const DROPBOX_TOKEN = "sl.u.AGWZjowIaHx11T4lNJZGYc-XPHY8y481H5RjV61IJPZQ9ifkRbQ7kkRI0aSt2XFVttt3Schnn4Lf3KkYL46mLAwdIJrRfRoAE9i9Ft1Ur0FI2BHTd5bjqsjqzdNa7LFzm3eVxDT_xF-px0EjHSI2kQ6_97qYLDqW3QDgRPtMn9PvRb6mfuvdabTGa-Sh6aaMV5RuQaDJIFhYLP__jfIVh6EsWpqNhfiT2_Nuk_IBaL-Bfs3ZxQ0qNYe1Iikum0hgFDLJp0SH1oIg510BRLQUuzpQRXnYBq4agV_DhZucD4w-2qZQbvQxtgVzM5vB_P_lbwzLnwKKAG-ccREMmfDMTC5GW0cWr7dfMbjVDiNVFugu2YiGKRXVwj64CGAzqI5tDrHtc89GYlomZUgLw7maaowXA58O-OufqaWhLqLdX1MeIs76NTmj8NnKD7tOESTjVEYv9C97qLJpx2L5kQQjxWjbKmUjvmce2MqwYZzKUCta0EnzX4XnEvhxVzNWDvPywDX0v3uNaFAuNPhYHqClmmMDkjA8XXAnJ4dTFF93BZDvdud_j-2pBD18_V3Ad9IwtTpqk4YPmKiRB2v1qB19Q9K_9ziPiboFfQsmMAgQ2GDzvsR64usuGlFu2uX5NayzgBij1B687qJFBrLmlqmCkQa_xJTQERkv2NeNbMoXn1L341pwctP10gW96gID603UdDkxOmNVBCmCk3f8ODapMfrulNANiDWcxeq1sfsnPvqrfxxf7d_cmg0uOlppj-S48aKl-sbrvEnJJS48RRcyeIBXFouvaPSe5Zn-4jAJ2C60f6VFU7pcVWAq3B705bpMolPKP5Uh9mwTax0PG0YKE9q8XMhu8lOL7nV3ahlPgZsSdf4YTexad8tAf4lBwe3PLyG-SIZjgXqtQGtPYTFuGFlXaocR49rtTu3PABzV4v9H2lj2mxgJKM1VLSoHchMelBvqFbaaScpHduFLthFwnWfVjNzUkvTT816k_0Z94HRBsSuGzXO10lt0r44R_3-K2udm_go3ToAYuEWgKrbeaLOG-E8faleQXyhFck00X4IrmPeXnC44urCmCKKtlFOjfmLGqOM4wmdqyeYYYg5LTv6VWf8EFnxLPS0DB3WSv57VcQreTKv01RnQWOU6k75I9VPeURLUP3ZH2VOs1vSFLCzw_7ucKDISY8-kqkbUCQzkBr34oqWyj5bVrIWziuJZvPBOnRXh3qkFLITc3lCH8b4vDQfvbZ6596-ltneABdeZQoZiaeaQrhft_PERKQjDzNsA394PG-5_VFOyqEEJGfvQ6kevwE2BkaQU_AI9GF8WJ5Pd7EG5LuX3PGZeYtAM5QDMBMaALLNwkkfyo4vmjW4O-ZJgEisUFce7nvNIooVIBLQI6qAv-N6C-TWVdPsuvFDJuqy7BxCICaDHCOSZq2aNqTdzwrJkUrqq3r2EjxQIqQ";
+        const APP_KEY = 'xnn97yqq7toflho';
+        const APP_SECRET = '34k2iq4rbn0zqgk'; 
+        const REFRESH_TOKEN = 'OI-7RpuZyfkAAAAAAAAAATgnbXUlpcY6QHNc3tW3Otg_QO5Tle5F7eaFC7kMpcxB';
 
+        const USUARIOS = {
+            "ADMIN2026": "ADMIN_MASTER",
+            "Y2476468A": "AACHOUCH_MOHAMED",
+            "X8438618X": "ALEXANDRU_BUDICA",
+            "06686387B": "ALONSO_ALMIRON_PABLO_DIEGO",
+            "30294499A": "ALTAMIRANO_BARRENO_EDGAR_FAVIAN",
+            "76149016H": "ANGULO_CANO_JOSE_ANTONIO",
+            "X2774043J": "ANTONISHYN_VOLODYMYR",
+            "X3226614J": "BADASEN_EDUARD",
+            "61086987E": "BADULIN_BADULIN_IVAN",
+            "24458966F": "BARRENO_BARRENO_PASTOR_DAVID",
+            "24461472Y": "BARRENO_GUAMAN_LENIN_ELISEO",
+            "X7053432E": "BOUHMIDA_ABDERRAHIM",
+            "78238286Z": "BOUTABOUZI_BELLAFKIH_MOHAMED",
+            "X4537327W": "BOYANOV_TODOROV_NASKO",
+            "34852667P": "CARRETERO_FERNANDEZ_ANTONIO",
+            "23239188B": "CARRILLO__RODRIGUEZ_SEBASTIAN",
+            "24213872R": "CASARES_VILLEGAS_EDUARDO",
+            "44252650Y": "CASTRO_PEREZ_MIGUEL_ANGEL",
+            "X8533662H": "CHAFI_ABDERRAHIM",
+            "Z1386487Y": "CHAUCA_PINTO_ROBERT_ALEJANDRO",
+            "X2820158J": "CHTIOUI_AYOUB",
+            "07217382M": "COCERA_MAYOR_MARIA_ISABEL",
+            "23884086N": "COLLAY_GOMEZ_MARTIZA_LILIAN",
+            "48591455E": "CORTES_ROSELLO_VICENT_XAVIER",
+            "23271344J": "COSTA_MUNUERA_JUAN_PEDRO",
+            "Y3668543B": "DE_SOUSA_SIMOES_MARCO_JOSE",
+            "45598435S": "DIEZ__ALCOLEA_JULIO_DAVID",
+            "Y3404295X": "EL_AAMRI_SAMIR",
+            "30387558G": "EL_ABBASSI_OUYHIA_EL_MOKHTAR",
+            "X4485716A": "EL_AMRI_RACHID",
+            "X6855983M": "ELM_OMAYRY_MOHAMED",
+            "75225578F": "ESPIN_GARCIA_JUAN",
+            "75105665Q": "ESPINOSA_RODRIGUEZ_JOSE_MANUEL",
+            "52519009G": "EXPOSITO_LAPAZ_ANTONIO",
+            "45602523D": "FERNANDEZ_MARIN_ANTONIO",
+            "46711203C": "FERRO_DENGRA_GERMAN",
+            "23306596Y": "GARCIA_DE_OLIVEIRA_JULIANO",
+            "74696867C": "GARCIA_LEON_FRANCISCO_JAVIER",
+            "24243234S": "GARCIA_MADRID_JUAN_FRANCISCO",
+            "23254819W": "GARCIA_SOLER_ANDRES",
+            "52756281P": "GARCIA_VARAS_JESUS_MANUEL",
+            "75223429C": "GARCIA_YELAMOS_ANTONIO",
+            "78264798F": "GENNADIY_LYOVIN",
+            "49628666W": "GEREZ_GARCIA_CARLOS",
+            "Y6876752L": "GIRON_ARROYO_HUGO_WILLIAM",
+            "76141897Y": "GOMEZ_BOTIA_SANTIAGO",
+            "52518486X": "GONZALEZ_JIMENEZ_JUAN_EMILIO",
+            "X3566859L": "GUAMAN__GUAMAN_ANGEL_PATRICIO",
+            "X1375099K": "HAIK_KAOUTAR",
+            "X5605664N": "HAJAJI_BRAHIM",
+            "X6499674N": "HERRERA_PAREDES_JORGE_ANTOLIN",
+            "26486923P": "HIDALGO_FERNANDEZ_MATIAS",
+            "75102438D": "HURTADO_CASTREJON_JAVIER",
+            "07111642L": "IVANAUSKAS_ANDRIUS",
+            "X7551144Z": "IVANOV_KOSTADINOV_TODOR",
+            "75226642J": "JIMENEZ_CARMONA_JOSE",   
+            "24276531P": "LA_FUENTE_PERTINEZ_ALEJANDRO",      
+            "73760469K": "LAPIEDRA_ARIETE_SALVADOR", 
+            "34803307Y": "LAVEDA_SABATER_JOSE_ANTONIO", 
+            "Y0437810L": "LEONTIN_MUDURA_IONUT", 
+            "X6514744V": "LEVENKO_OLEXANDRE", 
+            "23249865Q": "LOPEZ_GIMENEZ_JESUS",
+            "26498938V": "LOPEZ_ZURANO_DIEGO",
+            "45719077E": "LOSADA_RODRIGUEZ_CRISTIAN",
+            "31864158G": "MARQUEZ_MANZANO_JOAQUIN",
+            "23239502A": "MARTINEZ_BLAZQUEZ_ANTONIO",
+            "52511611N": "MARTINEZ_MORENO_LUIS",
+            "X6128923K": "MEDELEANU_CONSTANTIN",
+            "Z0565908K": "MEJDOUBI_RIDOUAN",
+            "23275102E": "MENCHON_JIMENEZ_GINES",
+            "07118663W": "MENDEZ_MEJIA_DAVID_MARTIN",
+            "52524023G": "MENDEZ_PENA_FRANCISCO",
+            "23221061P": "MINARRO__QUINONERO_PEDRO",
+            "45602967Q": "MONTESINOS_NAVARRO_RUBEN",
+            "25443115D": "MORENO_MONTERO_IGNACIO",
+            "30298475T": "MOTTA_CCOLLQUE_EDWIN_GABRIEL",
+            "X6877511M": "MUTENOV_VENTSISLAV",
+            "X6414552J": "NIKOLVO_SPASOV_KRASIMIR",
+            "Y3357885Z": "NOUREDDINE_ABDELILEH",
+            "76147400N": "ORTIZ_MARTINEZ_ANTONIO",
+            "X4230231W": "OUCHRUH_RACHID",
+            "60986281X": "OUJHAINE_BOUSKOUR_ADIL",
+            "23265867X": "PADILLA_PERNIAS_GINES",
+            "Y5307459Q": "PATEANU_DUMITRU_GEORGIAN",
+            "23252128W": "PEREZ_GARCIA_SEBASTIAN",
+            "23262378V": "PEREZ_GUERRERO_PEDRO",
+            "23237026B": "PEREZ_HIDALGO_FRANCISCO",
+            "45719558C": "PEREZ_PADILLA_SERGIO",
+            "49696109D": "PUGLIA_ALVARADO_MICHAEL_ALBERTO",
+            "44267718D": "QUESADA_CARRASCO_CESAR",
+            "Z0476121A": "RADUCANU_GEORGE",
+            "X3932298B": "RALEV_IVANOV_DIYAN",
+            "26480192Q": "REYES_MOYA_ANTONIO",
+            "45275325D": "RICHARTE_AMADOR_JUAN_JOSE",
+            "23274756K": "RICO_CARMONA_BLAS",
+            "X9188020A": "RIVOLTA_LUCAS_EMMANUEL",
+            "52525667S": "ROBLEODO_MORALES_SANTIAGO",
+            "17524890V": "ROMAN_ORTIZ_JOSE_OCTAVIO",
+            "X7780743G": "ROSU_IONUT_DANIEL",
+            "Y7474765D": "ROSU_VALENTINA",
+            "26460965V": "RUIZ_ROBLES_JUAN_JOSE",
+            "08155256P": "SAGRI_MOSTAFA_SAID",
+            "B00272839N": "SAICU_LUCIA_SILVIA",
+            "26210085K": "SANCHEZ_ALVAREZ_JUAN_CARLOS",
+            "38833558J": "SANCHEZ_AVILA_JOSE",
+            "76144002H": "SANCHEZ_GALERA_FRANCISCO",
+            "23227380W": "SANCHEZ_LIRON_NICOLAS",
+            "23237125H": "SANCHEZ_PARRA_PATRICIO",
+            "29001300W": "SANCHEZ_TEBAR_BENITO",
+            "23252883K": "SANCHEZ_ZURANO_ALONSO",
+            "X3175335R": "SHULYK_MYKHAYLO",
+            "X7402548K": "SPINA_MAURIZIO",
+            "X9007024V": "STANESCU_MARIUS_STAN",
+            "X5887061G": "STANESCU_VIOLETA",
+            "Z0448269G": "SUDARIO_RUMALDO_ARTURO",
+            "52524269C": "TELLO_POZO_FERNANDO",
+            "X5053199F": "TORODOV_NIKOLA_ASENOV",
+            "45712788N": "TORREBLANCA_LEON_MAXIMO",
+            "23226786Y": "TORRENTE_MARTINEZ_JUAN",
+            "X5902446W": "URBONAVICIUS_MARIUS",
+            "23873310T": "USHCA_GUILCAPI_HECTOR_FABIAN",
+            "02779554G": "VENEGAS_VELIZ_MARIO",
+            "43053420L": "VICENTE_CEBRIAN_JUAN_MIGUEL",
+            "42848341P": "VILLA_BERMEJO_FRANCISCO_ALVARO",
+        };
+
+        let currentToken = "";
+        let usuarioIdentificado = "";
         const banderas = { 'be':'be', 'de':'de', 'fr':'fr', 'gb':'gb', 'nl':'nl', 'es':'es', 'pt':'pt', 'it':'it' };
 
-        function verificar() {
-            if (document.getElementById('pass-input').value === CLAVE_ACCESO) {
+        async function refreshAccessToken() {
+            try {
+                const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'grant_type': 'refresh_token',
+                        'refresh_token': REFRESH_TOKEN.trim(),
+                        'client_id': APP_KEY.trim(),
+                        'client_secret': APP_SECRET.trim()
+                    })
+                });
+                const data = await response.json();
+                return data.access_token;
+            } catch (e) { return null; }
+        }
+
+        async function verificar() {
+            const inputVal = document.getElementById('pass-input').value.trim().toUpperCase();
+            if (USUARIOS[inputVal]) {
+                usuarioIdentificado = USUARIOS[inputVal];
                 document.getElementById('login-screen').remove();
                 document.getElementById('app-screen').classList.remove('hidden');
-                cargarArchivos();
+                
+                if(usuarioIdentificado === "ADMIN_MASTER") {
+                    document.getElementById('saludo-usuario').innerText = "Panel Maestro";
+                    document.getElementById('saludo-usuario').classList.add('text-yellow-400');
+                    document.getElementById('sub-titulo').innerText = "Visibilidad completa activada";
+                } else {
+                    document.getElementById('saludo-usuario').innerText = `Hola, ${usuarioIdentificado.replace(/_/g, ' ')}`;
+                }
+                
+                currentToken = await refreshAccessToken();
+                if (currentToken) cargarArchivos();
             } else {
                 document.getElementById('error-msg').classList.remove('hidden');
+                document.getElementById('pass-input').value = "";
             }
         }
 
         async function cargarArchivos() {
             const lista = document.getElementById('lista-archivos');
-            lista.innerHTML = '<p class="text-center py-10 text-gray-400 italic">Sincronizando certificados...</p>';
+            lista.innerHTML = '<div class="text-center py-20 animate-pulse text-gray-400 text-xs uppercase font-bold">Sincronizando...</div>';
+
             try {
                 const res = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${DROPBOX_TOKEN}`, 'Content-Type': 'application/json' },
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ "path": "", "recursive": true })
                 });
                 const data = await res.json();
-                renderizar(data.entries || []);
-            } catch (e) { console.error(e); }
+                
+                let filtrados;
+                if (usuarioIdentificado === "ADMIN_MASTER") {
+                    filtrados = data.entries.filter(a => a[".tag"] !== "folder");
+                } else {
+                    filtrados = data.entries.filter(a => 
+                        a[".tag"] !== "folder" && a.name.toUpperCase().includes(usuarioIdentificado.toUpperCase())
+                    );
+                }
+                renderizar(filtrados);
+            } catch (e) { 
+                lista.innerHTML = '<p class="text-center text-red-500 font-bold p-10">ERROR CLOUD</p>';
+            }
         }
 
         async function previsualizar(path, nombre) {
             document.getElementById('visor-nombre').innerText = nombre;
             document.getElementById('visor-modal').style.display = 'flex';
             const frame = document.getElementById('pdf-frame');
-            const btnDescargar = document.getElementById('btn-descargar');
-            
-            frame.src = ""; // Limpiar visor
-            btnDescargar.href = "#"; // Limpiar link anterior
-
+            frame.src = "";
             try {
                 const res = await fetch('https://api.dropboxapi.com/2/files/get_temporary_link', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${DROPBOX_TOKEN}`, 'Content-Type': 'application/json' },
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ "path": path })
                 });
                 const data = await res.json();
-                
                 if (data.link) {
-                    // Acción 1: El visor de pantalla (Google Docs)
                     frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(data.link)}&embedded=true`;
-                    
-                    // Acción 2: El botón de descarga directa
-                    btnDescargar.href = data.link;
+                    document.getElementById('btn-descargar').href = data.link;
                 }
-            } catch (e) {
-                alert("No se pudo cargar la vista previa.");
-                cerrarVisor();
-            }
-        }
-
-        function cerrarVisor() {
-            document.getElementById('visor-modal').style.display = 'none';
-            document.getElementById('pdf-frame').src = "";
-            document.getElementById('btn-descargar').href = "#";
+            } catch (e) { alert("Error"); }
         }
 
         function renderizar(archivos) {
             const lista = document.getElementById('lista-archivos');
-            lista.innerHTML = '';
-            archivos.filter(a => a[".tag"] !== "folder").sort((a,b) => a.name.localeCompare(b.name)).forEach(archivo => {
+            lista.innerHTML = archivos.length ? '' : '<div class="text-center py-20 text-slate-400 uppercase text-[10px] font-bold">Vacio</div>';
+            archivos.sort((a,b) => a.name.localeCompare(b.name)).forEach(archivo => {
                 const nombreL = archivo.name.toLowerCase();
                 let cp = null;
-                for (let k in banderas) { if (nombreL.includes(`_${k}_`)) { cp = banderas[k]; break; } }
-                
+                for (let k in banderas) { if (nombreL.includes(`_${k}_`) || nombreL.includes(`_${k}.`)) { cp = banderas[k]; break; } }
                 const card = `
-                    <div class="item fade-in bg-white rounded-2xl shadow-sm border border-gray-100 mb-3 overflow-hidden boton-archivo">
+                    <div class="item fade-in bg-white rounded-2xl shadow-sm border border-gray-100 mb-3">
                         <button onclick="previsualizar('${archivo.path_lower}', '${archivo.name}')" class="w-full flex items-center p-4 text-left">
-                            <div class="w-10 h-7 flex-shrink-0 bg-slate-100 rounded flex items-center justify-center border">
-                                ${cp ? `<img src="https://flagcdn.com/w80/${cp}.png" class="h-full object-cover">` : `<span class="text-[8px] font-bold text-slate-400 uppercase">PDF</span>`}
+                            <div class="w-10 h-7 flex-shrink-0 bg-slate-50 rounded flex items-center justify-center border overflow-hidden">
+                                ${cp ? `<img src="https://flagcdn.com/w80/${cp}.png" class="h-full w-full object-cover">` : `<span class="text-[8px] font-bold text-slate-300">PDF</span>`}
                             </div>
                             <div class="ml-4 flex-1">
-                                <h3 class="text-slate-800 font-bold text-xs uppercase truncate w-40 sm:w-64">${archivo.name.replace('.pdf','').replace(/_/g,' ')}</h3>
-                                <p class="text-blue-600 text-[9px] font-black uppercase mt-1">Ver en pantalla ❯</p>
+                                <h3 class="text-slate-800 font-bold text-[9px] uppercase truncate w-48">${archivo.name.replace('.pdf','').replace(/_/g,' ')}</h3>
+                                <p class="text-blue-600 text-[8px] font-bold uppercase mt-0.5">Abrir ❯</p>
                             </div>
                         </button>
                     </div>`;
@@ -141,6 +293,7 @@
             });
         }
 
+        function cerrarVisor() { document.getElementById('visor-modal').style.display = 'none'; document.getElementById('pdf-frame').src = ""; }
         function filtrar() {
             const v = document.getElementById('buscador').value.toLowerCase();
             const items = document.getElementsByClassName('item');
