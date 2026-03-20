@@ -19,7 +19,7 @@
         <div class="text-5xl mb-4">🔐</div>
         <h2 class="text-2xl font-bold mb-2 text-slate-800">Acceso Privado</h2>
         <p class="text-slate-500 text-sm mb-6">Introduce tu PIN o DNI</p>
-        <input type="text" id="pass-input" class="w-full p-4 border-2 rounded-xl mb-4 text-center text-xl outline-none focus:border-blue-500 font-mono uppercase" placeholder="Escribe aquí..." autocomplete="off">
+        <input type="password" id="pass-input" class="w-full p-4 border-2 rounded-xl mb-4 text-center text-xl outline-none focus:border-blue-500 font-mono" placeholder="********" autocomplete="off">
         <button onclick="verificar()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest">Entrar</button>
         <p id="error-msg" class="text-red-500 mt-4 text-xs font-bold hidden uppercase">Código Incorrecto</p>
     </div>
@@ -55,7 +55,7 @@
         const REFRESH_TOKEN = 'OI-7RpuZyfkAAAAAAAAAATgnbXUlpcY6QHNc3tW3Otg_QO5Tle5F7eaFC7kMpcxB';
 
         const USUARIOS = {
-            "ADMIN2026": "ADMIN_MASTER",
+            "B3lzunc3s": "ADMIN_MASTER",
             "Y2476468A": "AACHOUCH_MOHAMED",
             "X8438618X": "ALEXANDRU_BUDICA",
             "06686387B": "ALONSO_ALMIRON_PABLO_DIEGO",
@@ -77,8 +77,6 @@
             "Z1386487Y": "CHAUCA_PINTO_ROBERT_ALEJANDRO",
             "X2820158J": "CHTIOUI_AYOUB",
             "07217382M": "COCERA_MAYOR_MARIA_ISABEL",
-            "23884086N": "COLLAY_GOMEZ_MARTIZA_LILIAN",
-            "48591455E": "CORTES_ROSELLO_VICENT_XAVIER",
             "23271344J": "COSTA_MUNUERA_JUAN_PEDRO",
             "Y3668543B": "DE_SOUSA_SIMOES_MARCO_JOSE",
             "45598435S": "DIEZ__ALCOLEA_JULIO_DAVID",
@@ -203,9 +201,11 @@
         }
 
         async function verificar() {
-            const inputVal = document.getElementById('pass-input').value.trim().toUpperCase();
-            if (USUARIOS[inputVal]) {
-                usuarioIdentificado = USUARIOS[inputVal];
+            const inputVal = document.getElementById('pass-input').value.trim();
+            let usuario = USUARIOS[inputVal] || USUARIOS[inputVal.toUpperCase()];
+
+            if (usuario) {
+                usuarioIdentificado = usuario;
                 document.getElementById('login-screen').remove();
                 document.getElementById('app-screen').classList.remove('hidden');
                 
@@ -227,27 +227,54 @@
 
         async function cargarArchivos() {
             const lista = document.getElementById('lista-archivos');
-            lista.innerHTML = '<div class="text-center py-20 animate-pulse text-gray-400 text-xs uppercase font-bold">Sincronizando...</div>';
+            lista.innerHTML = '<div class="text-center py-20 animate-pulse text-gray-400 text-xs uppercase font-bold">Sincronizando base de datos completa...</div>';
 
             try {
-                const res = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "path": "", "recursive": true })
-                });
-                const data = await res.json();
+                let todosLosArchivos = [];
+                let tieneMas = true;
+                let cursor = "";
+
+                // Bucle de paginación para obtener todos los archivos de Dropbox
+                while (tieneMas) {
+                    const url = cursor 
+                        ? 'https://api.dropboxapi.com/2/files/list_folder/continue' 
+                        : 'https://api.dropboxapi.com/2/files/list_folder';
+                    
+                    const cuerpo = cursor 
+                        ? JSON.stringify({ "cursor": cursor }) 
+                        : JSON.stringify({ "path": "", "recursive": true });
+
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${currentToken}`, 
+                            'Content-Type': 'application/json' 
+                        },
+                        body: cuerpo
+                    });
+                    
+                    const data = await res.json();
+                    if (data.entries) {
+                        todosLosArchivos = todosLosArchivos.concat(data.entries);
+                    }
+                    
+                    tieneMas = data.has_more;
+                    cursor = data.cursor;
+                }
                 
                 let filtrados;
                 if (usuarioIdentificado === "ADMIN_MASTER") {
-                    filtrados = data.entries.filter(a => a[".tag"] !== "folder");
+                    filtrados = todosLosArchivos.filter(a => a[".tag"] !== "folder");
                 } else {
-                    filtrados = data.entries.filter(a => 
+                    filtrados = todosLosArchivos.filter(a => 
                         a[".tag"] !== "folder" && a.name.toUpperCase().includes(usuarioIdentificado.toUpperCase())
                     );
                 }
                 renderizar(filtrados);
+
             } catch (e) { 
-                lista.innerHTML = '<p class="text-center text-red-500 font-bold p-10">ERROR CLOUD</p>';
+                console.error(e);
+                lista.innerHTML = '<p class="text-center text-red-500 font-bold p-10">ERROR DE CONEXIÓN</p>';
             }
         }
 
@@ -272,7 +299,8 @@
 
         function renderizar(archivos) {
             const lista = document.getElementById('lista-archivos');
-            lista.innerHTML = archivos.length ? '' : '<div class="text-center py-20 text-slate-400 uppercase text-[10px] font-bold">Vacio</div>';
+            lista.innerHTML = archivos.length ? '' : '<div class="text-center py-20 text-slate-400 uppercase text-[10px] font-bold">Sin documentos</div>';
+            
             archivos.sort((a,b) => a.name.localeCompare(b.name)).forEach(archivo => {
                 const nombreL = archivo.name.toLowerCase();
                 let cp = null;
