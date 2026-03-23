@@ -1,36 +1,28 @@
 'use strict';
 
-// ─── CONFIGURACIÓN DE DROPBOX ────────────────────────────────────────────────
-const DROPBOX = {
-    appKey:       'xnn97yqq7toflho',
-    appSecret:    '34k2iq4rbn0zqgk',
-    refreshToken: 'OI-7RpuZyfkAAAAAAAAAATgnbXUlpcY6QHNc3tW3Otg_QO5Tle5F7eaFC7kMpcxB'
-};
-
 // ─── BANDERAS ────────────────────────────────────────────────────────────────
 const BANDERAS = { be:'be', de:'de', fr:'fr', gb:'gb', nl:'nl', es:'es', pt:'pt', it:'it' };
 
 // ─── ESTADO GLOBAL ───────────────────────────────────────────────────────────
 const estado = {
-    token:         '',
-    usuario:       '',
-    archivos:      [],
-    intentos:      0,
+    token:          '',
+    usuario:        '',
+    archivos:       [],
+    intentos:       0,
     bloqueadoHasta: 0,
-    pdfDoc:        null,
-    paginaActual:  1,
-    totalPaginas:  0,
+    pdfDoc:         null,
+    paginaActual:   1,
+    totalPaginas:   0,
+    portalListo:    false, // true cuando irAlPortal() ha sido llamado
 };
 
 // ─── UTILIDADES ──────────────────────────────────────────────────────────────
 
-/** Hashea un string con SHA-256 y devuelve hex.
- *  Disponible en consola: sha256("TuPIN").then(console.log) */
 async function sha256(texto) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
-window.sha256 = sha256; // expuesto para generar hashes desde la consola
+window.sha256 = sha256;
 
 function $(id) { return document.getElementById(id); }
 
@@ -49,33 +41,25 @@ async function verificar() {
     const input = $('pass-input').value.trim();
     if (!input) return;
 
-    // Spinner
     $('btn-login-text').textContent = 'Verificando...';
     $('btn-login-spinner').classList.remove('hidden');
     $('btn-login').disabled = true;
     $('error-msg').classList.add('hidden');
 
-    // Buscar usuario: texto plano primero, luego hash SHA-256
     let usuarioEncontrado = null;
     const inputUpper = input.toUpperCase();
 
     for (const [clave, nombre] of Object.entries(USUARIOS)) {
-        // Texto plano (compatible mientras se migra a hashes)
         if (clave === input || clave === inputUpper) {
             usuarioEncontrado = nombre;
             break;
         }
-        // Hash SHA-256 (valores de exactamente 64 caracteres hex)
         if (clave.length === 64) {
-            const hashInput = await sha256(input);
-            if (clave === hashInput) {
-                usuarioEncontrado = nombre;
-                break;
-            }
+            const h = await sha256(input);
+            if (clave === h) { usuarioEncontrado = nombre; break; }
         }
     }
 
-    // Restaurar botón
     $('btn-login-text').textContent = 'Entrar';
     $('btn-login-spinner').classList.add('hidden');
     $('btn-login').disabled = false;
@@ -83,7 +67,7 @@ async function verificar() {
     if (usuarioEncontrado) {
         estado.intentos = 0;
         estado.usuario  = usuarioEncontrado;
-        entrarApp();
+        mostrarBienvenida();
     } else {
         estado.intentos++;
         $('pass-input').value = '';
@@ -114,13 +98,55 @@ function bloquear() {
     }, 1000);
 }
 
-// ─── INICIAR APP ──────────────────────────────────────────────────────────────
+// ─── PANTALLA DE BIENVENIDA ───────────────────────────────────────────────────
 
-async function entrarApp() {
+async function mostrarBienvenida() {
+    // Quitar login
     $('login-screen').remove();
+
+    // Preparar contenido de bienvenida
+    const esAdmin  = estado.usuario === 'ADMIN_MASTER';
+    const nombre   = esAdmin ? 'ADMINISTRACIÓN' : estado.usuario.replace(/_/g, ' ');
+    const partes   = nombre.trim().split(' ').filter(Boolean);
+    const iniciales = partes.length >= 2 ? partes[0][0] + partes[1][0] : nombre.substring(0, 2);
+
+    $('welcome-nombre').textContent = nombre;
+    $('welcome-avatar').textContent = iniciales.toUpperCase();
+    if (esAdmin) {
+        $('welcome-avatar').classList.replace('bg-blue-500', 'bg-yellow-500');
+        $('welcome-docs').textContent = 'Acceso maestro activado';
+    } else {
+        $('welcome-docs').textContent = 'Cargando tus certificados...';
+    }
+
+    // Mostrar pantalla
+    const ws = $('welcome-screen');
+    ws.classList.remove('hidden');
+    ws.classList.add('flex');
+
+    // Precargar archivos en paralelo mientras el usuario ve la bienvenida
+    estado.token = await refreshToken();
+    if (estado.token) {
+        cargarArchivos(); // sin await — corre en background
+    }
+
+    // Auto-avanzar tras 2.5s
+    setTimeout(irAlPortal, 2500);
+}
+
+function irAlPortal() {
+    // Evitar doble llamada (botón + timeout)
+    if (estado.portalListo) return;
+    estado.portalListo = true;
+
+    // Ocultar bienvenida y mostrar app
+    $('welcome-screen').classList.add('hidden');
+    $('welcome-screen').classList.remove('flex');
     $('app-screen').classList.remove('hidden');
 
-    if (estado.usuario === 'ADMIN_MASTER') {
+    // Configurar navbar
+    const esAdmin = estado.usuario === 'ADMIN_MASTER';
+    if (esAdmin) {
         $('saludo-usuario').textContent = 'ADMINISTRACIÓN';
         $('saludo-usuario').classList.add('text-yellow-400');
         $('sub-titulo').textContent = 'Acceso Maestro';
@@ -128,16 +154,17 @@ async function entrarApp() {
         $('saludo-usuario').textContent = estado.usuario.replace(/_/g, ' ');
     }
 
-    mostrarSkeletons();
-    estado.token = await refreshToken();
-    estado.token ? cargarArchivos() : errorLista('Error al conectar con el servidor');
+    // Si los archivos ya cargaron en background, renderizar directamente
+    // Si aún no han llegado, mostrar skeletons hasta que lleguen
+    if (estado.archivos.length) renderizar(estado.archivos);
+    else mostrarSkeletons();
 }
 
 // ─── SKELETONS ────────────────────────────────────────────────────────────────
 
 function mostrarSkeletons() {
     $('lista-archivos').innerHTML = Array.from({length: 5}).map(() => `
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-4 mb-3">
             <div class="skeleton w-12 h-8 rounded-lg flex-shrink-0"></div>
             <div class="flex-1 space-y-2">
                 <div class="skeleton h-3 w-3/4 rounded"></div>
@@ -156,9 +183,9 @@ async function refreshToken() {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 grant_type:    'refresh_token',
-                refresh_token: DROPBOX.refreshToken.trim(),
-                client_id:     DROPBOX.appKey.trim(),
-                client_secret: DROPBOX.appSecret.trim()
+                refresh_token: CONFIG.dropbox.refreshToken.trim(),
+                client_id:     CONFIG.dropbox.appKey.trim(),
+                client_secret: CONFIG.dropbox.appSecret.trim()
             })
         });
         const data = await res.json();
@@ -179,7 +206,7 @@ async function cargarArchivos() {
                 : JSON.stringify({ path: '', recursive: true });
 
             const res  = await fetch(url, {
-                method:  'POST',
+                method: 'POST',
                 headers: { Authorization: `Bearer ${estado.token}`, 'Content-Type': 'application/json' },
                 body
             });
@@ -198,27 +225,22 @@ async function cargarArchivos() {
         }
 
         estado.archivos = filtrados;
-        renderizar(filtrados);
+
+        // Actualizar texto de bienvenida si aún es visible
+        if (!estado.portalListo && $('welcome-docs')) {
+            $('welcome-docs').textContent =
+                `${filtrados.length} certificado${filtrados.length !== 1 ? 's' : ''} encontrado${filtrados.length !== 1 ? 's' : ''}`;
+        }
+
+        // Solo renderizar si el portal ya está visible
+        if (estado.portalListo) renderizar(filtrados);
 
     } catch {
-        errorLista('Error de conexión con Dropbox');
+        if (estado.portalListo) errorLista('Error de conexión con Dropbox');
     }
 }
 
-// ─── RENDERIZADO ──────────────────────────────────────────────────────────────
-
-function bandera(nombre) {
-    const n = nombre.toLowerCase();
-    for (const [k, v] of Object.entries(BANDERAS)) {
-        if (n.includes(`_${k}_`) || n.includes(`_${k}.`)) return v;
-    }
-    return null;
-}
-
-function errorLista(msg) {
-    $('lista-archivos').innerHTML =
-        `<div class="text-center py-20 text-red-400 font-bold text-sm uppercase">${msg}</div>`;
-}
+// ─── RENDERIZADO ─────────────────────────────────────────────────────────────
 
 function renderizar(archivos) {
     const lista = $('lista-archivos');
@@ -235,32 +257,34 @@ function renderizar(archivos) {
     lista.innerHTML = archivos
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(archivo => {
-            const cp       = bandera(archivo.name);
-            const flag     = cp
-                ? `<img src="https://flagcdn.com/w80/${cp}.png" class="h-full w-full object-cover" loading="lazy">`
-                : `<span class="text-[8px] font-black text-slate-400">DOC</span>`;
-            const titulo   = archivo.name.replace('.pdf', '').replace(/_/g, ' ');
-            const pathSafe = archivo.path_lower.replace(/'/g, "\\'");
-            const nomSafe  = archivo.name.replace(/'/g, "\\'");
-
-            return `
-                <div class="item fade-in bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-shadow hover:shadow-md">
-                    <button onclick="previsualizar('${pathSafe}','${nomSafe}')" class="w-full flex items-center p-4 text-left active:bg-slate-50">
-                        <div class="w-12 h-8 flex-shrink-0 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shadow-inner">
-                            ${flag}
-                        </div>
-                        <div class="ml-4 flex-1 min-w-0">
-                            <h3 class="text-slate-800 font-bold text-[11px] uppercase truncate">${titulo}</h3>
-                            <p class="text-blue-500 text-[9px] font-black uppercase mt-0.5 tracking-wide">Ver certificado ›</p>
-                        </div>
-                        <svg class="h-4 w-4 text-slate-300 ml-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </button>
-                </div>`;
-        })
+        .map(archivo => cardHTML(archivo))
         .join('');
+}
+
+function cardHTML(archivo) {
+    const cp       = bandera(archivo.name);
+    const flag     = cp
+        ? `<img src="https://flagcdn.com/w80/${cp}.png" class="h-full w-full object-cover" loading="lazy">`
+        : `<span class="text-[8px] font-black text-slate-400">DOC</span>`;
+    const titulo   = archivo.name.replace('.pdf', '').replace(/_/g, ' ');
+    const pathSafe = archivo.path_lower.replace(/'/g, "\\'");
+    const nomSafe  = archivo.name.replace(/'/g, "\\'");
+
+    return `
+        <div class="item fade-in bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-shadow hover:shadow-md mb-3">
+            <button onclick="previsualizar('${pathSafe}','${nomSafe}')" class="w-full flex items-center p-4 text-left active:bg-slate-50">
+                <div class="w-12 h-8 flex-shrink-0 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 overflow-hidden shadow-inner">
+                    ${flag}
+                </div>
+                <div class="ml-4 flex-1 min-w-0">
+                    <h3 class="text-slate-800 font-bold text-[11px] uppercase truncate">${titulo}</h3>
+                    <p class="text-blue-500 text-[9px] font-black uppercase mt-0.5 tracking-wide">Ver certificado ›</p>
+                </div>
+                <svg class="h-4 w-4 text-slate-300 ml-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>`;
 }
 
 // ─── BUSCADOR ─────────────────────────────────────────────────────────────────
@@ -268,6 +292,21 @@ function renderizar(archivos) {
 function filtrar() {
     const q = $('buscador').value.toLowerCase().trim();
     renderizar(q ? estado.archivos.filter(a => a.name.toLowerCase().includes(q)) : estado.archivos);
+}
+
+// ─── UTILIDADES DE RENDERIZADO ───────────────────────────────────────────────
+
+function bandera(nombre) {
+    const n = nombre.toLowerCase();
+    for (const [k, v] of Object.entries(BANDERAS)) {
+        if (n.includes(`_${k}_`) || n.includes(`_${k}.`)) return v;
+    }
+    return null;
+}
+
+function errorLista(msg) {
+    $('lista-archivos').innerHTML =
+        `<div class="text-center py-20 text-red-400 font-bold text-sm uppercase">${msg}</div>`;
 }
 
 // ─── VISOR PDF.js ─────────────────────────────────────────────────────────────
@@ -322,9 +361,9 @@ async function renderPagina(num) {
     const canvas   = document.createElement('canvas');
     const ctx      = canvas.getContext('2d');
 
-    canvas.width        = viewport.width;
-    canvas.height       = viewport.height;
-    canvas.style.width  = '100%';
+    canvas.width       = viewport.width;
+    canvas.height      = viewport.height;
+    canvas.style.width = '100%';
 
     $('pdf-container').appendChild(canvas);
     await page.render({ canvasContext: ctx, viewport }).promise;

@@ -30,7 +30,6 @@
         autocomplete="off"
         onkeydown="if(event.key==='Enter') verificar()"
     >
-
     <button
         id="btn-login"
         onclick="verificar()"
@@ -42,12 +41,41 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
     </button>
-
     <div id="error-area" class="mt-4 min-h-[20px]">
         <p id="error-msg" class="text-red-500 text-xs font-bold uppercase hidden"></p>
         <p id="bloqueo-msg" class="text-red-700 text-xs font-bold uppercase hidden">
             Demasiados intentos. Espera <span id="countdown">30</span>s
         </p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PANTALLA DE BIENVENIDA
+═══════════════════════════════════════════ -->
+<div id="welcome-screen" class="hidden fixed inset-0 welcome-bg z-[9998] flex items-center justify-center p-6">
+    <div class="text-center fade-in">
+
+        <!-- Avatar con iniciales -->
+        <div id="welcome-avatar" class="w-24 h-24 rounded-3xl bg-blue-500 flex items-center justify-center mx-auto mb-6 text-3xl font-black text-white shadow-2xl shadow-blue-900">
+            ??
+        </div>
+
+        <p class="text-blue-300 text-[10px] uppercase tracking-widest font-black mb-2">Bienvenido al portal</p>
+        <h2 id="welcome-nombre" class="text-2xl font-black text-white uppercase mb-2 leading-tight"></h2>
+        <p id="welcome-docs" class="text-blue-400 text-xs font-bold mb-10"></p>
+
+        <!-- Barra de progreso -->
+        <div class="w-48 h-1 bg-blue-900 rounded-full mx-auto mb-6 overflow-hidden">
+            <div id="welcome-progress" class="h-full bg-blue-400 rounded-full welcome-progress-bar"></div>
+        </div>
+
+        <button
+            onclick="irAlPortal()"
+            class="bg-white text-blue-900 font-black px-10 py-3 rounded-2xl uppercase tracking-widest text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-xl"
+        >
+            Acceder →
+        </button>
+        <p class="text-blue-500 text-[9px] mt-3 uppercase font-bold tracking-wider">o espera un momento</p>
     </div>
 </div>
 
@@ -81,7 +109,7 @@
                 type="text"
                 id="buscador"
                 onkeyup="filtrar()"
-                placeholder="Buscar conductor o país..."
+                placeholder="Buscar conductor o certificado..."
                 class="w-full p-3.5 pl-11 rounded-2xl border-none shadow-md outline-none text-slate-600 focus:ring-2 focus:ring-blue-400 text-sm transition-all"
             >
         </div>
@@ -89,7 +117,7 @@
     </div>
 
     <div class="p-4 flex-1">
-        <div id="lista-archivos" class="space-y-3 pb-10"></div>
+        <div id="lista-archivos" class="pb-10"></div>
     </div>
 
     <footer class="p-4 text-center border-t border-slate-200">
@@ -110,9 +138,9 @@
         </div>
         <div class="flex gap-2 flex-shrink-0">
             <div id="paginacion" class="hidden items-center gap-1">
-                <button onclick="cambiarPagina(-1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors">‹</button>
+                <button onclick="cambiarPagina(-1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold">‹</button>
                 <span id="info-pagina" class="text-[10px] text-slate-300 font-bold px-1"></span>
-                <button onclick="cambiarPagina(1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors">›</button>
+                <button onclick="cambiarPagina(1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-[10px] font-bold">›</button>
             </div>
             <a id="btn-descargar" href="#" download class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all flex items-center gap-1">
                 <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +151,6 @@
             <button onclick="cerrarVisor()" class="bg-red-600 hover:bg-red-500 active:scale-95 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all">✕</button>
         </div>
     </div>
-
     <div id="pdf-loading" class="flex-1 flex flex-col items-center justify-center text-white gap-4">
         <svg class="h-10 w-10 animate-spin text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -131,11 +158,11 @@
         </svg>
         <p class="text-xs text-slate-400 uppercase font-bold tracking-widest">Cargando documento...</p>
     </div>
-
     <div id="pdf-container" class="hidden flex-1"></div>
 </div>
 
-<!-- Scripts (orden importante: usuarios → app) -->
+<!-- Orden de carga: config → usuarios → app -->
+<script src="js/config.js"></script>
 <script src="js/usuarios.js"></script>
 <script src="js/app.js"></script>
 
