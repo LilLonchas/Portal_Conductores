@@ -1,0 +1,74 @@
+/* ─── VARIABLES ──────────────────────────────────────────────────────────── */
+:root {
+    --navy:      #1e3a5f;
+    --navy-dark: #152b47;
+}
+
+/* ─── NAVBAR ─────────────────────────────────────────────────────────────── */
+.nav-bg { background: var(--navy); }
+
+/* ─── ANIMACIONES ────────────────────────────────────────────────────────── */
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.shake {
+    animation: shake 0.4s ease;
+}
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-8px); }
+    75%     { transform: translateX(8px); }
+}
+
+/* ─── SKELETON LOADER ────────────────────────────────────────────────────── */
+.skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 1rem;
+}
+@keyframes shimmer {
+    0%   { background-position:  200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ─── VISOR PDF ──────────────────────────────────────────────────────────── */
+#visor-modal {
+    display:        none;
+    position:       fixed;
+    inset:          0;
+    background:     rgba(10, 15, 28, 0.98);
+    z-index:        9999;
+    flex-direction: column;
+}
+
+#pdf-container {
+    flex:            1;
+    overflow-y:      auto;
+    display:         flex;
+    flex-direction:  column;
+    align-items:     center;
+    gap:             8px;
+    padding:         12px;
+    background:      #525659;
+}
+
+#pdf-container canvas {
+    max-width:  100%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── SCROLLBAR (WebKit) ─────────────────────────────────────────────────── */
+#pdf-container::-webkit-scrollbar       { width: 6px; }
+#pdf-container::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
+
+/* ─── FEEDBACK TÁCTIL ────────────────────────────────────────────────────── */
+button:active,
+a:active {
+    transform: scale(0.96);
+}
