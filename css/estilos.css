@@ -8,29 +8,22 @@
 .nav-bg { background: var(--navy); }
 
 /* ─── ANIMACIONES ────────────────────────────────────────────────────────── */
-.fade-in {
-    animation: fadeIn 0.3s ease-out;
-}
+.fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-
-.shake {
-    animation: shake 0.4s ease;
-}
+.shake { animation: shake 0.4s ease; }
 @keyframes shake {
     0%,100% { transform: translateX(0); }
     25%     { transform: translateX(-8px); }
     75%     { transform: translateX(8px); }
 }
 
-/* ─── PANTALLA DE BIENVENIDA ─────────────────────────────────────────────── */
+/* ─── BIENVENIDA ─────────────────────────────────────────────────────────── */
 .welcome-bg {
     background: radial-gradient(ellipse at center, #1e3a5f 0%, #0f172a 70%);
 }
-
-/* Barra de progreso que se llena en 2.5s */
 .welcome-progress-bar {
     animation: progress 2.5s linear forwards;
     width: 0%;
@@ -40,7 +33,7 @@
     to   { width: 100%; }
 }
 
-/* ─── SKELETON LOADER ────────────────────────────────────────────────────── */
+/* ─── SKELETON ───────────────────────────────────────────────────────────── */
 .skeleton {
     background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
     background-size: 200% 100%;
@@ -52,6 +45,51 @@
     100% { background-position: -200% 0; }
 }
 
+/* ─── TABS ───────────────────────────────────────────────────────────────── */
+.tab-btn {
+    color: #94a3b8;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+}
+.tab-btn:hover:not(.tab-active) {
+    color: #64748b;
+    background: #f8fafc;
+}
+.tab-active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+}
+
+/* ─── FILTROS MOVILIDAD ──────────────────────────────────────────────────── */
+.fm-btn {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1.5px solid #e2e8f0;
+}
+.fm-btn:hover:not(.fm-activo) { background: #e2e8f0; }
+.fm-activo {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+}
+
+/* ─── BADGES ─────────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+.badge-vigente  { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; }
+.badge-proximo  { background:#fef9c3; color:#a16207; border:1px solid #fde047; }
+.badge-expirado { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+.badge-sin      { background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+
 /* ─── VISOR PDF ──────────────────────────────────────────────────────────── */
 #visor-modal {
     display:        none;
@@ -61,26 +99,24 @@
     z-index:        9999;
     flex-direction: column;
 }
-
 #pdf-container {
-    flex:            1;
-    overflow-y:      auto;
-    display:         flex;
-    flex-direction:  column;
-    align-items:     center;
-    gap:             8px;
-    padding:         12px;
-    background:      #525659;
+    flex:           1;
+    overflow-y:     auto;
+    display:        flex;
+    flex-direction: column;
+    align-items:    center;
+    gap:            8px;
+    padding:        12px;
+    background:     #525659;
 }
-
 #pdf-container canvas {
     max-width:  100%;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
-/* ─── SCROLLBAR (WebKit) ─────────────────────────────────────────────────── */
+/* ─── SCROLLBAR ──────────────────────────────────────────────────────────── */
 #pdf-container::-webkit-scrollbar       { width: 6px; }
 #pdf-container::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
 
-/* ─── FEEDBACK TÁCTIL ────────────────────────────────────────────────────── */
+/* ─── TÁCTIL ─────────────────────────────────────────────────────────────── */
 button:active, a:active { transform: scale(0.96); }

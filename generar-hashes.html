@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Hashes — Uso interno</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/usuarios.js"></script>
+</head>
+<body class="bg-slate-900 min-h-screen p-6 text-white">
+    <div class="max-w-2xl mx-auto">
+        <div class="mb-8">
+            <h1 class="text-2xl font-black uppercase tracking-widest mb-1">🔐 Generador de Hashes</h1>
+            <p class="text-slate-400 text-sm">Genera el archivo <code class="text-blue-400">js/usuarios.js</code> con todos los DNIs hasheados en SHA-256.</p>
+            <p class="text-yellow-400 text-xs font-bold mt-2 uppercase">⚠️ Uso exclusivamente interno — no compartir este archivo</p>
+        </div>
+        <button onclick="generarHashes()" id="btn-generar"
+            class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 font-black py-4 rounded-2xl uppercase tracking-widest transition-all flex items-center justify-center gap-2 mb-6">
+            <span id="btn-texto">Generar usuarios.js hasheado</span>
+            <svg id="spinner" class="hidden h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+        </button>
+        <div id="resultado" class="hidden">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-green-400 font-black text-sm uppercase" id="mensaje-ok"></p>
+                <button onclick="copiar()" id="btn-copiar"
+                    class="bg-green-600 hover:bg-green-500 active:scale-95 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all">
+                    📋 Copiar
+                </button>
+            </div>
+            <textarea id="output"
+                class="w-full h-96 bg-slate-800 text-green-300 font-mono text-[11px] p-4 rounded-2xl border border-slate-700 outline-none resize-none"
+                readonly></textarea>
+            <p class="text-slate-500 text-xs mt-3 leading-relaxed">
+                Copia el contenido y reemplaza por completo tu <code class="text-blue-400">js/usuarios.js</code>.
+                Los conductores seguirán usando su DNI — el hash es transparente para ellos.
+            </p>
+        </div>
+    </div>
+    <script>
+    async function sha256(texto) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+    async function generarHashes() {
+        const btn = document.getElementById('btn-generar');
+        btn.disabled = true;
+        document.getElementById('btn-texto').textContent = 'Generando...';
+        document.getElementById('spinner').classList.remove('hidden');
+        const entradas = Object.entries(USUARIOS);
+        const hasheadas = [];
+        for (const [clave, nombre] of entradas) {
+            const hash = clave.length === 64 ? clave : await sha256(clave);
+            hasheadas.push({ hash, nombre, original: clave });
+        }
+        const lineas = hasheadas.map(({ hash, nombre, original }) => {
+            const comentario = hash !== original ? ` // ${original}` : '';
+            return `    "${hash}": "${nombre}",${comentario}`;
+        });
+        const output = [
+            '// js/usuarios.js — generado automáticamente con hashes SHA-256',
+            '',
+            'const USUARIOS = {',
+            ...lineas,
+            '};',
+        ].join('\n');
+        document.getElementById('output').value = output;
+        document.getElementById('mensaje-ok').textContent = `✅ ${hasheadas.length} usuarios procesados`;
+        document.getElementById('resultado').classList.remove('hidden');
+        btn.disabled = false;
+        document.getElementById('btn-texto').textContent = 'Regenerar';
+        document.getElementById('spinner').classList.add('hidden');
+    }
+    async function copiar() {
+        await navigator.clipboard.writeText(document.getElementById('output').value);
+        const btn = document.getElementById('btn-copiar');
+        btn.textContent = '✅ Copiado';
+        setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+    }
+    </script>
+</body>
+</html>
