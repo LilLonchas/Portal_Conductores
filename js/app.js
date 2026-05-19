@@ -15,6 +15,22 @@ const CARPETA_MOVILIDAD  = '/movilidad';
 const DIAS_AVISO_PROXIMO = 45;  // días antes de caducidad para mostrar amarillo
 const MESES_VALIDEZ      = 6;   // validez del permiso en meses
 
+// ─── USUARIOS EXTRA (desde conductores.json en Dropbox) ─────────────────────
+let _extraUsers = {};
+(async () => {
+    try {
+        const token = await refreshToken();
+        if (!token) return;
+        const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Dropbox-API-Arg': JSON.stringify({ path: '/conductores.json' }) }
+        });
+        if (!res.ok) return;
+        const arr = await res.json();
+        if (Array.isArray(arr)) arr.forEach(c => { if (c.pin && c.nombre) _extraUsers[c.pin] = c.nombre; });
+    } catch {}
+})();
+
 // ─── ESTADO GLOBAL ───────────────────────────────────────────────────────────
 const estado = {
     token:          '',
@@ -64,7 +80,7 @@ async function verificar() {
     let usuarioEncontrado = null;
     const inputUpper = input.toUpperCase();
 
-    for (const [clave, nombre] of Object.entries(USUARIOS)) {
+    for (const [clave, nombre] of Object.entries({ ..._extraUsers, ...USUARIOS })) {
         if (clave === input || clave === inputUpper) {
             usuarioEncontrado = nombre;
             break;
