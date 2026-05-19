@@ -12,7 +12,7 @@ const CONFIG = {
     dropbox: {
         appKey:           'xnn97yqq7toflho',
         appSecret:        '34k2iq4rbn0zqgk',
-        refreshToken:     'OI-7RpuZyfkAAAAAAAAAATgnbXUlpcY6QHNc3tW3Otg_QO5Tle5F7eaFC7kMpcxB',
+        refreshToken:     'OZJEQSm06RkAAAAAAAAAAQ4sy799B7dzIfLXorN-MrngPnR603ZHdfPObv_SCeEY',
         carpetaMovilidad: '/movilidad'
     },
 
